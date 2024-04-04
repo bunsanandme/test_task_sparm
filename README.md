@@ -50,6 +50,8 @@ db.session.add(d3)
 db.session.add(d4)
 db.session.add(g1)
 db.session.add(g2)
+db.session.add(u1)
+db.session.add(u2)
 db.session.commit()
 exit()
 ```
