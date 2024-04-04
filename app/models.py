@@ -5,9 +5,11 @@ from sqlalchemy.orm import class_mapper
 import sqlalchemy
 import json
 
+
 def get_fields_names(cls):
     return [prop.key for prop in class_mapper(cls).iterate_properties
-        if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
+            if isinstance(prop, sqlalchemy.orm.ColumnProperty)]
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -29,7 +31,6 @@ class User(db.Model, UserMixin):
     login = db.Column(db.String(255), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=False)
 
-
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -50,7 +51,7 @@ class User(db.Model, UserMixin):
 
     def __str__(self):
         return f"{self.lastName}, {self.login}"
-    
+
 
 class GenderType(db.Model):
 
@@ -96,9 +97,11 @@ class Document(db.Model):
             "id": self.id,
             "user": str(User.query.filter_by(id=self.user_id).first()),
             "type": str(DocumentType.query.filter_by(id=self.type_id).first()),
-            "details": json.loads(self.data.replace("'", '"').replace("None", "null"))
+            "details": json.loads(self.data.replace("'", '"')
+                                  .replace("None", "null"))
         }
         return data
-    
+
     def __str__(self):
-        return f"{self.id}, {str(DocumentType.query.filter_by(id=self.type_id).first())}"
+        return f"{self.id}, \
+        {str(DocumentType.query.filter_by(id=self.type_id).first())}"
