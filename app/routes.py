@@ -1,29 +1,34 @@
 from app import app, db
 from app.models import *
-from flask import jsonify, request
+from flask import jsonify, request, abort
 from flask_login import current_user, login_user, logout_user, login_required
 import json
 
-@app.route('/api/hello', methods=["GET"])
-def hello():
-    response = {
-        'message': 'Hello, World!'
-    }
-    return jsonify(response)
+@app.errorhandler(401)
+def page_not_found(e):
+    return {"error": "Unauthorized"}
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return {"error": "Not found"}
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return {"error": "Method not allowed"}
 
 
 
 @app.route('/api/login/', methods=["POST"])
 def signup_user():
     if current_user.is_authenticated:
-        return {"error": "User already logged in"}
+        return {"error": "User already logged in"}, 400
     login = request.get_json().get('login')
     password = request.get_json().get('password')
 
     if login and password:
         user = User.query.filter_by(login=login).first()
         if user is None or not user.check_password(password):
-            return {"error": "Invalid data"}
+            return {"error": "Invalid data"}, 400
         login_user(user)
         
         return user.to_dict(), 200
@@ -39,7 +44,7 @@ def logout():
 @app.route('/api/register/', methods=["POST"])
 def register():
     if current_user.is_authenticated:
-        return {"error": "User already logged in"}
+        return {"error": "User already logged in"}, 400
     
     raw_data = request.get_json()
     password = request.get_json().get('password')
@@ -49,7 +54,7 @@ def register():
     data = {key: raw_data[key] for key in set(raw_data.keys()) & set(get_fields_names(User))}
 
     if User.query.filter_by(login=data["login"]).first():
-        return {"error" : "User with this login already exists"}
+        return {"error" : "User with this login already exists"}, 400
 
     new_user = User(**data)
     new_user.set_password(password)
@@ -67,8 +72,11 @@ def get_current_user():
 @app.route('/api/user/<user_id>/', methods=["GET", "PUT", "DELETE"])
 @login_required
 def get_or_change_user(user_id):
-    user = User.query.filter_by(id=user_id).first()
+    user = User.query.get(user_id)
     user_documents = Document.query.filter_by(user_id=user_id)
+
+    if not user:
+        abort(404)
 
     if request.method == "GET":
         response = user.to_dict()
@@ -101,7 +109,7 @@ def get_or_change_user(user_id):
 @login_required
 def get_all_users():
     if current_user.type_id != 2:
-         return {"error": "Access denied"}
+         return {"error": "Access denied"}, 403
     
     users = User.query.all()
     response = [user.to_dict() for user in users]
@@ -127,6 +135,9 @@ def create_document():
 @login_required
 def get_or_change_document(document_id):
     document = Document.query.get(document_id)
+
+    if not document:
+        abort(404)
 
     if request.method == "GET":
         response = document.to_dict()
@@ -158,6 +169,7 @@ def procces_request():
     for data_first_step in request.get_json():
         for data_second_step in data_first_step["Data"]:
             for data_third_step in data_second_step["Users"]:
+                
                 user_data = dict()
 
                 credentials = data_third_step["Credentials"]
@@ -166,6 +178,9 @@ def procces_request():
 
                 for key in set(data_third_step.keys()) & set(get_fields_names(User)):
                     user_data[key] = data_third_step[key]
+
+                if User.query.filter_by(login=user_data["login"]).first():
+                    return {"error" : "User with this login already exists"}, 400
 
                 new_user = User(**user_data)
                 new_user.set_password(new_password)
