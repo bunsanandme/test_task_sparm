@@ -7,3 +7,5 @@ class Config(object):
         "mysql://root:admin@localhost:3306/test"
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    FLASK_APP = "run.py"
