@@ -49,7 +49,7 @@ class User(db.Model, UserMixin):
         return data
 
     def __str__(self):
-        return f"{self.last_name}, {self.login}"
+        return f"{self.lastName}, {self.login}"
     
 
 class GenderType(db.Model):

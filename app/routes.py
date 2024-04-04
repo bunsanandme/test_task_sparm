@@ -155,28 +155,34 @@ def get_or_change_document(document_id):
 @app.route('/api/procces_request/', methods=["POST"])
 @login_required
 def procces_request():
+    for data_first_step in request.get_json():
+        for data_second_step in data_first_step["Data"]:
+            for data_third_step in data_second_step["Users"]:
+                user_data = dict()
 
-    root_data = request.get_json()[0]["Data"][0]["Users"][0]
-    user_data = dict()
+                credentials = data_third_step["Credentials"]
+                user_data["login"] = credentials["username"]
+                new_password = credentials["pass"]
 
-    credentials = root_data["Credentials"]
-    user_data["login"] = credentials["username"]
-    new_password = credentials["pass"]
+                for key in set(data_third_step.keys()) & set(get_fields_names(User)):
+                    user_data[key] = data_third_step[key]
 
-    for key in set(root_data.keys()) & set(get_fields_names(User)):
-        user_data[key] = root_data[key]
+                new_user = User(**user_data)
+                new_user.set_password(new_password)
+                
+                db.session.add(new_user)
+                db.session.commit()
 
-    new_user = User(**user_data)
-    new_user.set_password(new_password)
-    db.session.add(new_user)
-    db.session.commit()
+                documents_data = data_third_step["Documents"]
+                for document in documents_data:
+                    document_type = document.pop("documentType_id")
+                    document_id = document.pop("id")
 
-    documents_data = root_data["Documents"]
-    for document in documents_data:
-        document_type = document.pop("documentType_id")
-        document_id = document.pop("id")
+                    new_document = Document(id=document_id, type_id=document_type, data=str(document), user_id = new_user.id)
+                    db.session.add(new_document)
+                    db.session.commit()
 
-        new_document = Document(id=document_id, type_id=document_type, data=str(document), user_id = new_user.id)
-        db.session.add(new_document)
-        db.session.commit()
-    return root_data
+                user_data.clear()
+    response = new_user.to_dict()
+    response["documents"] = [document.to_dict() for document in Document.query.filter_by(user_id=new_user.id)]
+    return response
